@@ -741,6 +741,17 @@ const CATS = {
 };
 const P = "https://silicon2-hq.slack.com/archives/C09HRC2L15K/p";
 
+/* Claude 아티팩트 환경 밖(GitHub Pages 등 정적 호스팅)에서 열려
+   전역 claude 객체가 없어도 죽지 않도록 감싼 안전 호출.
+   실패하면 항상 null을 돌려주고, 호출부는 기존처럼 로컬 저장으로 대체합니다. */
+async function useCapability(name){
+  try{
+    if(typeof claude === "undefined" || !claude || typeof claude.use !== "function") return null;
+    return await claude.use(name);
+  }catch(e){ return null; }
+}
+const STANDALONE = (typeof claude === "undefined" || !claude || typeof claude.use !== "function");
+
 // [날짜, 유형, 요청자, 제목, 상세, 메시지ts]
 const YONGGI = [
 ["05-11","etc","좌이랑","코스알엑스 프리오더 생성법 교육","익일 프리오더 생성 방법 안내 예정 (오전 리마인드 요청)","1778495543126799"],
@@ -1178,7 +1189,7 @@ async function initStore(){
   paintAll();
 
   if(dbHandle === null){
-    try{ dbHandle = await claude.use("db"); }catch(e){ dbHandle = false; }
+    dbHandle = await useCapability("db");
     if(!dbHandle) dbHandle = false;
     if(dbHandle){ initRoster(); initGuides(); initManual(); initNotes(); initDeleted(); initNotion().then(notionBackfill); }
   }
@@ -1574,7 +1585,7 @@ async function syncSlack(force){
 async function runSync(who, uid, force){
 
   let mcp = null;
-  try{ mcp = await claude.use("mcp"); }catch(e){ mcp = null; }
+  mcp = await useCapability("mcp");
   if(!mcp){ document.getElementById("syncBar").hidden = true; return; }
 
   syncStatus("슬랙에서 새 업무를 확인하는 중…", "busy");
@@ -1611,7 +1622,7 @@ async function runSync(who, uid, force){
   syncStatus(`새 업무 ${fresh.length}건을 정리하는 중…`, "busy");
 
   let sample = null;
-  try{ sample = await claude.use("sample"); }catch(e){ sample = null; }
+  sample = await useCapability("sample");
 
   let parsed = null;
   if(sample){
@@ -1771,7 +1782,7 @@ function toNotionProps(r){
 }
 
 async function getMcp(){
-  try{ return await claude.use("mcp"); }catch(e){ return null; }
+  return await useCapability("mcp");
 }
 
 /* 아직 노션에 없는 업무를 만들어 넣습니다 (첫 실행 시 전체 backfill) */
